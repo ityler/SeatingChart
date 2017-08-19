@@ -6,12 +6,10 @@ use Benchmark qw(:all) ;        # :hireswallclock -> for hi-res timing (microsec
 
 my($t0) = Benchmark->new;
 my %hash;
-my @bits = ();
 
 my($rows,$cols,$rsvdLine);
 $rows = 3;
 $cols = 11;
-$rsvdLine = "R1C4 R1C6 R2C3 R2C7 R3C9 R3C10";     # First line of file (optional)
 
 initSeatingChart(3,11);       # Create and build data strcuture
 my(@scored) = rankSeats();    # Get sorted array of best->worst 'SCORE'
@@ -28,6 +26,7 @@ while(<>){                    # Each line of input until EOF
 }
 print "\nRemaining Available Seats: ".getRemSeats()."\n\n";
 
+# - Benchmarking for determining best method of looping
 my($t1) = Benchmark->new;
 my($td) = timediff($t1, $t0);
 print "the code took:",timestr($td),"\n";
@@ -36,24 +35,24 @@ print "the code took:",timestr($td),"\n";
 # Check all possible combinations of requested block using key
 # -
 sub chkCombos {
-  my($key,$cnt) = @_;                                       # Key in common, number of requested seats
-  my($keyRow,$keyCol) = split(",",$key);                    # Split out row/column key
-  my(%combos) = ();                                         # store key combos and total score
+  my($key,$cnt) = @_;                                         # Key in common, number of requested seats
+  my($keyRow,$keyCol) = split(",",$key);                      # Split out row/column key
+  my(%combos) = ();                                           # store key combos and total score
   my($bkr) =  ($keyCol-($cnt-1)) > 0 
-                ? ($keyCol-($cnt-1)) : "0";                 # Column can not be less than 0
+                ? ($keyCol-($cnt-1)) : "0";                   # Column can not be less than 0
   my($ekr) =  ($keyCol+($cnt-1)) < 11 
-                ? ($keyCol+($cnt-1)) : "11";                # Column can not be more than highest column
-  my(@dataArr) = ($bkr .. $ekr);                            # Start range  .. End range of possible seat block
+                ? ($keyCol+($cnt-1)) : "11";                  # Column can not be more than highest column
+  my(@dataArr) = ($bkr .. $ekr);                              # Start range  .. End range of possible seat block
   my(%seatOptions) = ();
   my($blockScore);
   for(my $i = 0; $i <= $#dataArr; $i++){
-    $blockScore = 0;                                        # Total block score
-    if(defined($dataArr[$i+($cnt-1)])){                     # Last possible element in block is not outside scope of array range
-      my($sk) = $dataArr[$i];                               # Starting column key of possible block of seats
+    $blockScore = 0;                                          # Total block score
+    if(defined($dataArr[$i+($cnt-1)])){                       # Last possible element in block is not outside scope of array range
+      my($sk) = $dataArr[$i];                                 # Starting column key of possible block of seats
       for(my $j = 0; $j <= $cnt-1; $j++){
         my($tmpCol) = $sk+$j;
         print "TMPCOL: ".$tmpCol."\n";
-        if(defined($hash{$keyRow.",".$tmpCol})){            # Seat exists
+        if(defined($hash{$keyRow.",".$tmpCol})){              # Seat exists
           print "seat exists: ".$keyRow.",".$tmpCol."\n";
           if($hash{$keyRow.",".$tmpCol}{STATUS} ne "X"){      # Seat is available
             $blockScore += $hash{$keyRow.",".$tmpCol}{SCORE}; # Add total score to block total
@@ -96,27 +95,10 @@ sub chkCombos {
   
 }
 
-# -
-# @PARAM:
-#  Row, col, # of requested seats
-# -
-sub lookDir {
-  my($row,$col,$cnt) = @_;
-  my($cc) = int(($cols/2)+1);                  # Center column
-  my(@res);                                    # Resulting seat keys
-  my($pk) = $row.",".$col;
-  my($sk) = chkCombos($pk,$cnt);
-  if($sk){
-    @res = @$sk;                              # De-referenced result list
-  } else {
-    print "Unavailble seat: $pk\n";
-    return 0;
-  }
-  return \@res;                                 # Return reference to resul seat key list
-}
-
 # - 
-#
+# Find best block of seats given a certain number of seats as a request
+#  @PARAM: 
+#   - $sc Number of seats requested
 # -
 sub findSeats {
   my($sc) = shift;                            # count asking for
@@ -126,7 +108,7 @@ sub findSeats {
   foreach my $k (@scored){                    # Each available seat by best 'SCORE'
     print "Trying ".$k." --> SCORE: ".$hash{$k}{SCORE}."\n";
     my($row,$col) = split(",",$k);            # Split key into row and column parts
-    $chosen = lookDir($row,$col,$sc);         # Try to find available seats for current key
+    $chosen = lookDirection($row,$col,$sc);   # Try to find available seats for current key
     if($chosen){                              # Found number of requested seats available
       print "Done: Found match for $sc\n";
       foreach(@$chosen){                      # De-referenced result list
@@ -146,10 +128,15 @@ sub findSeats {
 }
 
 # -
+# Look a direction based on the seating chart grid
+#  -> Look to the 'left' for primary seat keys that reside to the left of front-center          (faster)
+#  -> Look to the 'right' for primary seat keys that reside to the right of front-center        (faster)
+#  -> Look both directions for primary seat keys that reside in the same column as front-center (slowest)
+#  -> By looking only to one direction we are potentially cutting the number of iterations in our loop by 50%
 # @PARAM:
 #  Row, col, # of requested seats
 # -
-sub lookDir_old {
+sub lookDirection {
   my($row,$col,$cnt) = @_;
   my($cc) = int(($cols/2)+1);                  # Center column
   my(@res);                                    # Resulting seat keys
@@ -159,17 +146,17 @@ sub lookDir_old {
     # - Switch between lookleft and lookright - track current iteration each time, compare values 
     print "LookingBothWays($row,$col)\n";
     my($pk) = $row.",".$col;
-    my($sk) = chkCombos($pk,$cnt);
+    my($sk) = chkCombos($pk,$cnt);              # Special method of looking both directions in seating row
     if($sk){
       @res = @$sk;                              # De-referenced result list
     } else {
       print "Unavailble seat: $pk\n";
       return 0;
     }
-  } elsif($col > $cc){                              # Seat is right of center
+  } elsif($col > $cc){                          # Seat is right of center
     # - Looking right direction - #
     print "LookingRight($row,$col)\n";
-    for(my $c = 0; $c <= $cnt-1; $c++){        # Find requested number of seats in a row
+    for(my $c = 0; $c <= $cnt-1; $c++){         # Find requested number of seats in a row
       if(($col+$c) < $cols){
         my $pk = $row.",".($col+$c);
         if($hash{$pk}{'STATUS'} eq "X"){
@@ -184,10 +171,10 @@ sub lookDir_old {
         return 0;
       }
     }
-  } else {                                     # Seat is left of center
+  } else {                                      # Seat is left of center
     # Looking left direction
     print "LookingLeft($row,$col)\n";
-    for(my $c = 0; $c <= $cnt-1; $c++){        # Find requested number of seats in a row
+    for(my $c = 0; $c <= $cnt-1; $c++){         # Find requested number of seats in a row
       if(($col-$c) > 0){
         my $pk = $row.",".($col-$c);
         if($hash{$pk}{'STATUS'} eq "X"){
@@ -206,12 +193,6 @@ sub lookDir_old {
   return \@res;                                 # Return reference to resul seat key list
 }
 
-# -
-# Count number of remaining available seats
-# -
-sub getRemSeats {
-  return scalar @scored;
-}
 
 # -
 # Initialize seating chart
@@ -257,6 +238,13 @@ sub setReserved {
 sub rankSeats {
   my @scored = sort { $hash{$a}{SCORE} <=> $hash{$b}{SCORE} or $a cmp $b}  keys %hash; # keys sorted on 'SCORE' from best->worst
   return @scored;
+}
+
+# -
+# Count number of remaining available seats
+# -
+sub getRemSeats {
+  return scalar @scored;
 }
 
 # -
