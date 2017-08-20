@@ -142,7 +142,7 @@ sub _set_seats_data {
       my($col) = $_;
       $data{"$row,$col"} = ({                                 # Hash key for each seat in venue (row,col)
         "STATUS" => "O",                                      # Init status of 'open' chnage to " " later
-        "SCORE"  => calcScore($fc,$row.",".$col)              # Set seats score in relation to front-center seat
+        "SCORE"  => calcSeatScore($fc,$row.",".$col)          # Set seats score in relation to front-center seat
       });
     }
   }
@@ -163,12 +163,13 @@ sub _set_seats_data {
 #   $fc -> Front Center seat #,#
 #   $ss -> Selected seat for value #,#
 # -
-sub calcScore {
+sub calcSeatScore {
   my($fc,$ss) = @_;
-  my($fcr,$fcc) = split(",",$fc);                     # Front-center (row,col)
-  my($ssr,$ssc) = split(",",$ss);                     # Seat to score (row,col)
-  my($result) = abs($fcr - $ssr) + abs($fcc - $ssc);  # Distance formula
-  return $result;                                     # Return numeric seat score
+  my($frontCenterSeatRow,$frontCenterSeatCol) = split(",",$fc);   # Front-center (row,col)
+  my($selectedSeatRow,$selectedSeatCol) = split(",",$ss);         # Seat to score (row,col)
+  my($score) = abs($frontCenterSeatRow - $selectedSeatRow) 
+              + abs($frontCenterSeatCol - $selectedSeatCol);      # Distance formula
+  return $score;                                                  # Return numeric seat score
 }
 
 # -
