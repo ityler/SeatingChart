@@ -20,7 +20,7 @@ if($result){                                  # Requested block was found
 ```
 Returns best rated available block of seats (number of seats as parameter)
 
-#### Perform a request for available seats
+#### Set a seat as reserved
 ```perl
 my($seat) = "1,6";               # Seat key (row,col)
 $sc->set_seat_reserved($seat);   # Reserve seat call
