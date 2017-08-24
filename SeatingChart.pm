@@ -51,7 +51,7 @@ sub get_seat_score {
 # Find best seat/block of seats available 
 # (best => based on Manhattan Distance from front-center seat)
 # @PARAMS:
-#   $rsc -> Requested seats count
+#   $reqSeatCnt -> Requested seats count
 # Returns best available group of seats for requested count | false
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -  
 #   @blockRange  -> Range of seat columns to try and build a sufficient 
@@ -62,29 +62,28 @@ sub get_seat_score {
 #                   number of requested seats
 # -
 sub get_avail_seats {
-  my($self,$rsc) = @_;
+  my($self,$reqSeatCnt) = @_;
   my($scoredKeys) = $self->{sorted_seats};                              # Get current array of sorted available seat keys
-  my($mxCls) = $self->{cols};                                           # Get instance column count (used as a maximum)
+  my($maxCols) = $self->{cols};                                         # Get instance column count (used as a maximum)
   foreach my $sk (@$scoredKeys){                                        # Iterate over available seats from best->notsogood score
     my($keyRow,$keyCol) = split(",",$sk);                               # Split out row/column key
-    my($bkr) =  ($keyCol-($rsc-1)) > 0                                  # Beginning key range
-              ? ($keyCol-($rsc-1)) : 1;                                 # Column can not be less than 1
-    my($ekr) =  ($keyCol+($rsc-1)) < $mxCls 
-              ? ($keyCol+($rsc-1)) : $mxCls;                            # Column can not be more than defined columns
-    my(@blockRange) = ($bkr .. $ekr);                                   # Start range  .. End range of possible seat block
+    my($bkr) =  ($keyCol-($reqSeatCnt-1)) > 0                           # Beginning key range
+              ? ($keyCol-($reqSeatCnt-1)) : 1;                          # Column can not be less than 1
+    my($ekr) =  ($keyCol+($reqSeatCnt-1)) < $maxCols                    # Beginning key range
+              ? ($keyCol+($reqSeatCnt-1)) : $maxCols;                   # Column can not be more than defined columns
+    my(@blockRange) = ($bkr .. $ekr);                                   # Start key range  .. End key range of possible seat block
     my(%validBlocks);                                                   # Final valid blocks->scores to be sorted and choose best
-    my($blockScore);                                                    # Total block score for each possible group of seats/seat
     for(my $i = 0; $i <= $#blockRange; $i++){                           # Each seat in block range from starting seat key
-      $blockScore = 0;                                                  # Reset block score for new attempt
+      my($blockScore) = 0;                                              # Total block score for each possible group of seats/seat
       # Don't check remainder of seats in potential block
       # if the last potential seat in the block isnt available
-      if(defined($blockRange[$i+($rsc-1)])){                            # Check that last possible seat in block is not outside scope of array range
+      if(defined($blockRange[$i+($reqSeatCnt-1)])){                     # Check that last possible seat in block is not outside scope of array range
         my($tk) = $blockRange[$i];                                      # Starting column key of possible block of seats
-        for(my $j = 0; $j <= $rsc-1; $j++){                             # Build possible block of seats using $tk
+        for(my $j = 0; $j <= $reqSeatCnt-1; $j++){                      # Build possible block of seats using $tk
           my($tmpCol) = $tk+$j;                                         # Column for next seat in potential block
           if($self->get_seat_status($keyRow.",".$tmpCol) ne "X"){       # Seat is available
             $blockScore += $self->get_seat_score($keyRow.",".$tmpCol);  # Add seat score to block total
-            if($j == ($rsc-1)){                                         # Last iteration (full block found)
+            if($j == ($reqSeatCnt-1)){                                  # Last iteration (full block found)
               $validBlocks{$keyRow.",".$tk} = $blockScore;              # Set possible block total score
             }
           } else { last; }                                              # Break out of loop early on unavailable (save cycles)
@@ -100,7 +99,7 @@ sub get_avail_seats {
       my($bk) = $scores[0];                                             # Get top rated starting seat key (build remaining seats from here)
       my($row,$col) = split(",",$bk);                                   # Split out row/column key
       my(@res);                                                         # Result array of seat keys
-      for(my $c = 0; $c <= $rsc-1; $c++){                               # Each seat from selected block
+      for(my $c = 0; $c <= $reqSeatCnt-1; $c++){                        # Each seat from selected block
         my $pk = $row.",".($col+$c);                                    # Build seat key
         push(@res,$pk);                                                 # Add block of seat keys to return array
       }
