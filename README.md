@@ -60,3 +60,6 @@ Sets seat(row,col) a status of reserved ('X')
 ## Requirements
 + Perl v.5+
 + No external package dependencies used.
+
+### Notes
+Older_solution/solver.pl -> Contains a solution that is somewhat more efficient from the standpoint of limiting the number of iterations over available seats. A global $DEBUG allows the ability to turn off/on loggin to STDOUT to see an in-depth view into each operation. 
