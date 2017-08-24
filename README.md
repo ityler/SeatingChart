@@ -14,12 +14,20 @@ my $sc = SeatingChart->new({
 
 #### Get request for available seats
 ```perl
-my($result) = $sc->get_avail_seats(4);        # Requesting a block of 4 seats
+my($reqCnt) = 4;
+my($result) = $sc->get_avail_seats($reqCnt);  # Requesting a block of 4 seats
 if($result){                                  # Requested block was found
   foreach(@$result){ print "seat: $_\n"; }    # Print out each seat in returned block
 }
 ```
 Returns best rated available block of seats (array reference)
+
+#### Get status of specific seat
+```perl
+my($seat) = "2,6";                        # Seat key (row,col)
+my($seatStatus) = $sc->get_seat_status(); # Seat status returned
+```
+Returns status string of available|reserved as 'O'|'X'
 
 #### Get remaining number of available seats
 ```perl
