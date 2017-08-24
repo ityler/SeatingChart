@@ -2,26 +2,27 @@
 use strict;
 use warnings;
 use Data::Dumper;
-use Benchmark qw(:hireswallclock) ;        # :hireswallclock -> for hi-res timing (microseconds)
+use Benchmark qw(:hireswallclock);    # :hireswallclock -> for hi-res timing (microseconds)
 
+my($DEBUG) = 1;                       # Global to toggle logging to STDOUT
 my($t0) = Benchmark->new;
 
 my %seats;
-my($rows,$cols,$rsvdLine);
+my($rows,$cols);
 $rows = 3;
 $cols = 11;
 
-initSeatingChart(3,11);       # Create and build data strcuture
-my(@scored) = rankSeats();    # Get sorted array of best->worst 'SCORE'
+initSeatingChart($rows,$cols);        # Build data structure
+my(@scored) = rankSeats();            # Get sorted array of best->worst 'SCORE'
 
-my($reqFlg) = 0;              # Request data flag
-while(<>){                    # Each line of input until EOF
-  chomp($_);                  # Strip crlf
-  if(!$reqFlg){               # 1st line of file (potentially reserved seats)
-    setReserved($_);          # Process reserved seats
-    $reqFlg = 1;              # Set request data flags
+my($reqFlg) = 0;                      # Request data flag
+while(<>){                            # Each line of input until EOF
+  chomp($_);                          # Strip crlf
+  if(!$reqFlg){                       # 1st line of file (potentially reserved seats)
+    setReserved($_);                  # Process reserved seats
+    $reqFlg = 1;                      # Set request data flags
   } else {
-    findSeats($_);            # Process # Seat request
+    findSeats($_);                    # Process # Seat request
   }
 }
 print "\nRemaining Available Seats: ".getRemSeats()."\n\n";
@@ -29,66 +30,63 @@ print "\nRemaining Available Seats: ".getRemSeats()."\n\n";
 # - Benchmark testing for determining best method of looping
 my($t1) = Benchmark->new;
 my($td) = timediff($t1, $t0);
-print "the code took:",timestr($td),"\n";
+logger("the code took: ".timestr($td)."\n");
 
 # -
 # Check all possible combinations of requested block using key
 # -
 sub chkCombos {
-  my($key,$cnt) = @_;                                          # Key in common, number of requested seats
-  my($keyRow,$keyCol) = split(",",$key);                       # Split out row/column key
-  my(%combos) = ();                                            # store key combos and total score
-  my($bkr) =  ($keyCol-($cnt-1)) > 0 
-                ? ($keyCol-($cnt-1)) : "0";                    # Column can not be less than 0
-  my($ekr) =  ($keyCol+($cnt-1)) < 11 
-                ? ($keyCol+($cnt-1)) : "11";                   # Column can not be more than highest column
-  my(@dataArr) = ($bkr .. $ekr);                               # Start range  .. End range of possible seat block
+  my($key,$reqSeatCnt) = @_;                                          # Key in common, number of requested seats
+  my($keyRow,$keyCol) = split(",",$key);                              # Split out row/column key
+  my(%combos) = ();                                                   # store key combos and total score
+  my($bkr) =  ($keyCol-($reqSeatCnt-1)) > 0 
+                ? ($keyCol-($reqSeatCnt-1)) : "0";                    # Column can not be less than 0
+  my($ekr) =  ($keyCol+($reqSeatCnt-1)) < 11 
+                ? ($keyCol+($reqSeatCnt-1)) : "11";                   # Column can not be more than highest column
+  my(@dataArr) = ($bkr .. $ekr);                                      # Start range  .. End range of possible seat block
   my(%seatOptions) = ();
-  my($blockScore);
   for(my $i = 0; $i <= $#dataArr; $i++){
-    $blockScore = 0;                                           # Total block score
-    if(defined($dataArr[$i+($cnt-1)])){                        # Last possible element in block is not outside scope of array range
-      my($sk) = $dataArr[$i];                                  # Starting column key of possible block of seats
-      for(my $j = 0; $j <= $cnt-1; $j++){
+    my($blockScore) = 0;                                              # Total block score
+    if(defined($dataArr[$i+($reqSeatCnt-1)])){                        # Last possible element in block is not outside scope of array range
+      my($sk) = $dataArr[$i];                                         # Starting column key of possible block of seats
+      for(my $j = 0; $j <= $reqSeatCnt-1; $j++){
         my($tmpCol) = $sk+$j;
-        print "TMPCOL: ".$tmpCol."\n";
-        if(defined($seats{$keyRow.",".$tmpCol})){              # Seat exists
-          print "seat exists: ".$keyRow.",".$tmpCol."\n";
-          if($seats{$keyRow.",".$tmpCol}{STATUS} ne "X"){      # Seat is available
-            $blockScore += $seats{$keyRow.",".$tmpCol}{SCORE}; # Add total score to block total
-            if($j == ($cnt-1)){                                # Last iteration (full block found)
-              $seatOptions{$keyRow.",".$sk} = $blockScore;     # Set possible block total score
+        logger("Possible Column: ".$tmpCol."\n");
+        if(defined($seats{$keyRow.",".$tmpCol})){                     # Seat exists
+          logger("seat exists: ".$keyRow.",".$tmpCol."\n");
+          if($seats{$keyRow.",".$tmpCol}{STATUS} ne "X"){             # Seat is available
+            $blockScore += $seats{$keyRow.",".$tmpCol}{SCORE};        # Add total score to block total
+            if($j == ($reqSeatCnt-1)){                                # Last iteration (full block found)
+              $seatOptions{$keyRow.",".$sk} = $blockScore;            # Set possible block total score
             }
           } else { last; }
         } else { last; }
       }
     }
   }
-  print "SEAT OPTIONS\n";
-  print Dumper(\%seatOptions);
-  print "\n\n";
-  my($bk) = 0;
+  logger("SEAT OPTIONS\n");
+  logger(Dumper(\%seatOptions));
+  logger("\n");
   my(@res);
   if(%seatOptions){
-    print "seatOptions true\n";
+    logger("Atleast 1 valid block of seats found\n");
     my(@scores) = sort { $seatOptions{$a} <=> $seatOptions{$b} } keys %seatOptions; # Sort possible blocks by lowest value
-    print "SCORES:\n";
+    logger("SCORES:\n");
     foreach(@scores){
-      print $_."\n";
+      logger($_."\n");
     }
-    print "\n\n";
     if(@scores){
-      $bk = $scores[0];  
-      print "BK: $bk\n";
+      my($blockKey) = $scores[0];                               # Key of first seat in seat block
+      logger("BK: $blockKey\n");
       # Create block of keys
-      my($row,$col) = split(",",$bk);              # Split out row/column key
-      for(my $c = 0; $c <= $cnt-1; $c++){          # Find requested number of seats in a row
-        my $pk = $row.",".($col+$c);
-        print "Found seat: ".$pk."\n";
-        push(@res,$pk);
+      my($row,$col) = split(",",$blockKey);                     # Split out row/column key
+      for(my $c = 0; $c <= $reqSeatCnt-1; $c++){                # Find requested number of seats in a row
+        my $pk = $row.",".($col+$c);                            # Build each seat key for block
+        logger("Seat in block: ".$pk."\n");
+        push(@res,$pk);                                         # Add seats from block to result array
       }
     }
-    return \@res;     # Starting hash key
+    return \@res;                                               # Resulting block of seat keys (best available block)
   } else {
     return 0;
   }
@@ -97,32 +95,34 @@ sub chkCombos {
 # - 
 # Find best block of seats given a certain number of seats as a request
 #  @PARAM: 
-#   - $sc Number of seats requested
+#   - $reqSeatCnt Number of seats requested
 # -
 sub findSeats {
-  my($sc) = shift;                             # count asking for
-  my($chosen);                                 # Result list scalar
-  print "-- Requested Seats: $sc --\n";
+  my($reqSeatCnt) = shift;                          # count asking for
+  my($chosen);                                      # Result list scalar
   # Start searching at best available seat
-  foreach my $k (@scored){                     # Each available seat by best 'SCORE'
-    print "Trying ".$k." --> SCORE: ".$seats{$k}{SCORE}."\n";
-    my($row,$col) = split(",",$k);             # Split key into row and column parts
-    $chosen = lookDirection($row,$col,$sc);    # Try to find available seats for current key
-    if($chosen){                               # Found number of requested seats available
-      print "Done: Found match for $sc\n";
-      foreach(@$chosen){                       # De-referenced result list
+  print "Request for: ${reqSeatCnt} seat(s)\n";
+  foreach my $k (@scored){                          # Each available seat by best 'SCORE'
+    logger("Trying ".$k." --> SCORE: ".$seats{$k}{SCORE}."\n");
+    my($row,$col) = split(",",$k);                  # Split key into row and column parts
+    $chosen = lookDirection($row,$col,$reqSeatCnt); # Try to find available seats for current key
+    if($chosen){                                    # Found number of requested seats available
+      logger("Done: Found match for $reqSeatCnt\n");
+      print "Found seat(s):\n";
+      foreach(@$chosen){                            # De-referenced result list
         my($key) = $_;
-        $seats{$key}{'STATUS'} = "X";          # Mark seat as reserved
-        @scored = grep {!/$key/} @scored;      # Remove newly taken seat from sorted score array
+        $seats{$key}{'STATUS'} = "X";               # Mark seat as reserved
+        @scored = grep {!/$key/} @scored;           # Remove newly taken seat from sorted score array
         print $key."\n";
       }
-      print "---------------------\n\n"; 
+      print "\n";
+      logger(print "---------------------\n\n"); 
       last; 
     }
   }
-  if(!$chosen){                                # No available seats found
+  if(!$chosen){                                     # No available seats found
     print "Not Available\n";
-    print "---------------------\n\n"; 
+    logger("---------------------\n\n"); 
   }
 }
 
@@ -136,55 +136,55 @@ sub findSeats {
 #  Row, col, # of requested seats
 # -
 sub lookDirection {
-  my($row,$col,$cnt) = @_;
+  my($row,$col,$reqSeatCnt) = @_;
   my($cc) = int(($cols/2)+1);                   # Center column
   my(@res);                                     # Resulting seat keys
   if($col == $cc){                              # Key column is the center column
     # Side step issue with assigning block that is not best
     # if key seat isnt a start/end seat, this is possible
     # - Switch between lookleft and lookright - track current iteration each time, compare values 
-    print "LookingBothWays($row,$col)\n";
+    logger("LookingBothWays($row,$col)\n");
     my($pk) = $row.",".$col;
-    my($sk) = chkCombos($pk,$cnt);              # Special method of looking both directions in seating row
+    my($sk) = chkCombos($pk,$reqSeatCnt);       # Special method of looking both directions in seating row
     if($sk){
       @res = @$sk;                              # De-referenced result list
     } else {
-      print "Unavailble seat: $pk\n";
+      logger("Unavailble seat: $pk\n");
       return 0;
     }
   } elsif($col > $cc){                          # Seat is right of center
     # - Looking right direction - #
-    print "LookingRight($row,$col)\n";
-    for(my $c = 0; $c <= $cnt-1; $c++){         # Find requested number of seats in a row
+    logger("LookingRight($row,$col)\n");
+    for(my $c = 0; $c <= $reqSeatCnt-1; $c++){  # Find requested number of seats in a row
       if(($col+$c) < $cols){
         my $pk = $row.",".($col+$c);
         if($seats{$pk}{'STATUS'} eq "X"){
-          print "Unavailble seat: $pk\n";
+          logger("Unavailble seat: $pk\n");
           return 0;
         } else {
-          print "Available seat: $pk\n";
+          logger("Available seat: $pk\n");
           push(@res,$pk);  
         }
       } else {
-        print "End of row encountered: Not enough space for $cnt seats\n";
+        logger("End of row encountered: Not enough space for $reqSeatCnt seats\n");
         return 0;
       }
     }
   } else {                                      # Seat is left of center
     # Looking left direction
-    print "LookingLeft($row,$col)\n";
-    for(my $c = 0; $c <= $cnt-1; $c++){         # Find requested number of seats in a row
+    logger("LookingLeft($row,$col)\n");
+    for(my $c = 0; $c <= $reqSeatCnt-1; $c++){  # Find requested number of seats in a row
       if(($col-$c) > 0){
         my $pk = $row.",".($col-$c);
         if($seats{$pk}{'STATUS'} eq "X"){
-          print "Unavailble seat encountered: $pk\n";
+          logger("Unavailble seat encountered: $pk\n");
           return 0;
         } else {
-          print "Available seat: $pk\n";
+          logger("Available seat: $pk\n");
           push(@res,$pk);  
         }
       } else {
-        print "End of row encountered: Not enough space for $cnt seats\n";
+        logger("End of row encountered: Not enough space for $reqSeatCnt seats\n");
         return 0;
       }
     }
@@ -204,7 +204,7 @@ sub initSeatingChart {
   my(@r) = (1...$rows);
   my(@c) = (1...$cols);
   my($fc) = "1,".int(($cols/2)+1);                  # Create front-center seat pair
-  print "\nFront Center: ".$fc."\n\n";
+  logger("Front Center: ".$fc."\n\n");
   foreach(@r){                                      # Each defined row
     my($row) = $_;
     foreach(@c){                                    # Each defined column
@@ -259,4 +259,15 @@ sub getSeatScore {
   my($ssx,$ssy) = split(",",$ss);
   my($result) = abs($fcx - $ssx) + abs($fcy - $ssy);
   return $result;
+}
+
+
+# -
+# Writes output to STDOUT
+#   -> Supress output if global $DEBUG is false
+# -
+sub logger {
+  if($DEBUG){
+    print shift;
+  }
 }
