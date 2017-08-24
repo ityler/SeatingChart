@@ -11,25 +11,42 @@ my $sc = SeatingChart->new({
   cols => 11                    # Define number of columns
 });
 ```
-#### Perform a request for available seats
+
+#### Get request for available seats
 ```perl
 my($result) = $sc->get_avail_seats(4);        # Requesting a block of 4 seats
 if($result){                                  # Requested block was found
   foreach(@$result){ print "seat: $_\n"; }    # Print out each seat in returned block
 }
 ```
-Returns best rated available block of seats (number of seats as parameter)
-
-#### Set a seat as reserved
-```perl
-my($seat) = "1,6";               # Seat key (row,col)
-$sc->set_seat_reserved($seat);   # Reserve seat call
-```
-Sets seat(row,col) a status of 'reserved' (X)
+Returns best rated available block of seats (array reference)
 
 #### Get remaining number of available seats
 ```perl
 print $sc->remaining_seat_count();
+```
+Returns the numeric representation of available seats
+
+#### Set seat as reserved
+```perl
+my($seat) = "1,6";               # Seat key (row,col)
+$sc->set_seat_reserved($seat);   # Reserve seat call
+```
+Sets seat(row,col) a status of reserved ('X')
+
+### Data Structure
+```perl
+# Seating Chart = ({
+#   {rows}                # Number of predefined rows
+#   {cols}                # Number of predefined columns
+#   {best}                # Front-center seat key (row,col) identifier
+#   {seats} = ({          # Seats hash
+#     {$row,$col} = ({    # Unique seat key
+#       "STATUS",         # Reserved/Available ('O'|'X')
+#       "SCORE"           # Manhattan distance score from 'best'
+#     })
+#   })
+# })
 ```
 
 ## Requirements
