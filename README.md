@@ -25,7 +25,7 @@ Returns best rated available block of seats (array reference)
 #### Get status of specific seat
 ```perl
 my($seat) = "2,6";                        # Seat key (row,col)
-my($seatStatus) = $sc->get_seat_status(); # Seat status returned
+my($seatStatus) = $sc->get_seat_status($seat); # Seat status returned
 ```
 Returns status string of available|reserved as 'O'|'X'
 
@@ -62,4 +62,4 @@ Sets seat(row,col) a status of reserved ('X')
 + No external package dependencies used.
 
 ### Notes
-Older_solution/solver.pl -> Contains a solution that is somewhat more efficient from the standpoint of limiting the number of iterations over available seats. A global $DEBUG allows the ability to turn off/on loggin to STDOUT to see an in-depth view into each operation. 
+Older_solution/solver.pl -> Contains a solution that is somewhat more efficient from the standpoint of limiting the number of iterations over available seats. A global $DEBUG allows the ability to turn off/on logging to STDOUT to see an in-depth view into each operation. 
