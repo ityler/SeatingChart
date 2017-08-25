@@ -14,7 +14,7 @@ my $sc = SeatingChart->new({
 
 #### Get request for available seats
 ```perl
-my($reqCnt) = 4;
+my($reqCnt) = 4;                              # Seat request count
 my($result) = $sc->get_avail_seats($reqCnt);  # Requesting a block of 4 seats
 if($result){                                  # Requested block was found
   foreach(@$result){ print "seat: $_\n"; }    # Print out each seat in returned block
@@ -24,7 +24,7 @@ Returns best rated available block of seats (array reference)
 
 #### Get status of specific seat
 ```perl
-my($seat) = "2,6";                        # Seat key (row,col)
+my($seat) = "2,6";                             # Seat key (row,col)
 my($seatStatus) = $sc->get_seat_status($seat); # Seat status returned
 ```
 Returns status string of available|reserved as 'O'|'X'
